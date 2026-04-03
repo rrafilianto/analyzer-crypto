@@ -1,0 +1,21 @@
+{
+  "name": "crypto-signal-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Crypto Futures Trading Signal Bot - Serverless on Vercel",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "deploy": "vercel --prod",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "technicalindicators": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vercel/node": "^3.0.0",
+    "typescript": "^5.3.0",
+    "vercel": "^37.0.0"
+  }
+}
