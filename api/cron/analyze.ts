@@ -3,6 +3,8 @@ import { analyzeSymbol } from '../../src/services/analyzer';
 import { researchSignal } from '../../src/services/researcher';
 import { sendSignal, sendScanSummary } from '../../src/services/telegram';
 import { getCurrentPrice } from '../../src/services/binance';
+import { evaluateOpenTrades } from '../../src/services/tracker';
+import { insertNewTrade } from '../../src/services/supabase';
 import { WATCHLIST } from '../../src/config/watchlist';
 import { MIN_AI_CONFIDENCE } from '../../src/config/constants';
 import { TradeSignal, CronResponse } from '../../src/types';
@@ -39,6 +41,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   for (const symbol of WATCHLIST) {
     try {
       console.log(`[Cron] Analyzing ${symbol}...`);
+
+      // TRACKER: Evaluate open trades first
+      const hasActiveTrade = await evaluateOpenTrades(symbol);
+      if (hasActiveTrade) {
+        result.skipped.push({ symbol, reason: `Active trade exists in DB` });
+        console.log(`[Cron] ${symbol}: SKIP — Active trade is still open in Supabase.`);
+        continue;
+      }
 
       // Step 1: Multi-Timeframe Technical Analysis
       const analysis = await analyzeSymbol(symbol);
@@ -88,7 +98,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         timestamp: Date.now(),
       };
 
-      // Step 4: Send Telegram alert
+      // Step 4: Save Tracker & Send Telegram alert
+      await insertNewTrade(signal);
       await sendSignal(signal);
 
       result.signals.push(signal);

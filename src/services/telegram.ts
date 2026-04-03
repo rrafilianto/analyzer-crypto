@@ -1,5 +1,6 @@
 import { TradeSignal, MTFAnalysisResult, CronResponse } from '../types';
 import { TF_LABELS, ANALYSIS_TIMEFRAMES } from '../config/constants';
+import { DBTrade } from './supabase';
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
 
@@ -149,4 +150,31 @@ export async function sendStatus(message: string): Promise<void> {
  */
 export async function sendRawMessage(text: string): Promise<void> {
   await sendMessage(text, 'HTML');
+}
+
+/**
+ * Send a paper trading DB status update.
+ */
+export async function sendTrackerAlert(trade: DBTrade, newStatus: string) {
+  const emoji = trade.direction === 'LONG' ? '🟢' : '🔴';
+  
+  let header = '';
+  let body = '';
+
+  if (newStatus === 'TP1_HIT') {
+    header = `🚀 <b>TP1 HIT [${trade.symbol}]</b>`;
+    body = `${emoji} ${trade.direction}\n✅ Secured 75% Profit.\n🛡️ Stop Loss moved to Entry (Break-Even) at ${trade.entry_price}`;
+  } else if (newStatus === 'CLOSED_WIN') {
+    header = `🎯 <b>JACKPOT TP2 HIT [${trade.symbol}]</b>`;
+    body = `${emoji} ${trade.direction}\n💰 Secured remaining 25% Profit!\n📈 Net PnL (After Fees): +${trade.pnl_percent.toFixed(2)}%`;
+  } else if (newStatus === 'CLOSED_BE') {
+    header = `🤝 <b>CLOSED AT BREAK-EVEN [${trade.symbol}]</b>`;
+    body = `${emoji} ${trade.direction}\n📉 Price reversed after TP1.\n🛡️ Closed remaining 25% safely at entry.\n📈 Net PnL (After Fees): +${trade.pnl_percent.toFixed(2)}%`;
+  } else if (newStatus === 'CLOSED_LOSS') {
+    header = `❌ <b>STOP LOSS HIT [${trade.symbol}]</b>`;
+    body = `${emoji} ${trade.direction}\n📉 Trade closed at SL.\n📉 Net PnL (After Fees): ${trade.pnl_percent.toFixed(2)}%`;
+  }
+
+  const message = `${header}\n\n${body}`;
+  await sendMessage(message, 'HTML');
 }
