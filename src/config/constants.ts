@@ -44,7 +44,7 @@ export const ANALYSIS_TIMEFRAMES: Timeframe[] = ['4h', '1h', '15m'];
 export const MIN_AI_CONFIDENCE = 60;
 
 /** Gemini model to use */
-export const GEMINI_MODEL = 'gemini-2.0-flash';
+export const GEMINI_MODEL = 'gemini-2.5-flash';
 
 // ========================
 // Binance API
