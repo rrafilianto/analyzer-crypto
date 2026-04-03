@@ -14,8 +14,9 @@ function buildResearchPrompt(analysis: MTFAnalysisResult): string {
   const tfSummaries = Object.entries(analyses)
     .map(([tf, a]) => {
       const label = TF_LABELS[tf as keyof typeof TF_LABELS];
-      const { ema, rsi } = a.indicators;
-      return `- ${label}: ${a.direction} | EMA9=${ema.ema9.toFixed(2)}, EMA21=${ema.ema21.toFixed(2)} | RSI=${rsi.value} (${rsi.condition})`;
+      const { ema, rsi, volume, pattern, regime } = a.indicators;
+      const patStr = pattern.detected ? ` | Pat: ${pattern.detected}` : '';
+      return `- ${label}: ${a.direction} | EMA9=${ema.ema9.toFixed(2)}, EMA21=${ema.ema21.toFixed(2)} | RSI=${rsi.value} (${rsi.condition}) | ADX=${regime.value} (Trending: ${regime.isTrending}) | Vol Confirmed: ${volume.isConfirmed}${patStr}`;
     })
     .join('\n');
 
@@ -51,7 +52,10 @@ export async function researchSignal(
   analysis: MTFAnalysisResult
 ): Promise<ResearchResult> {
   try {
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+    const model = genAI.getGenerativeModel({
+      model: GEMINI_MODEL,
+      tools: [{ googleSearchRetrieval: {} } as any],
+    });
 
     const prompt = buildResearchPrompt(analysis);
 

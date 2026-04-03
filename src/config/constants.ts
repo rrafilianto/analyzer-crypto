@@ -13,6 +13,12 @@ export const RSI_OVERSOLD = 30;
 
 export const ATR_PERIOD = 14;
 
+export const ADX_PERIOD = 14;
+export const ADX_TRENDING_THRESHOLD = 25;
+
+export const VOL_SMA_PERIOD = 20;
+export const VOL_MULTIPLIER = 1.5;
+
 // ========================
 // Risk Management
 // ========================
@@ -20,8 +26,11 @@ export const ATR_PERIOD = 14;
 /** Stop Loss multiplier × ATR */
 export const SL_ATR_MULTIPLIER = 1.5;
 
-/** Take Profit multiplier × ATR — gives 1:2 R/R ratio */
-export const TP_ATR_MULTIPLIER = 3.0;
+/** Take Profit 1 multiplier × ATR */
+export const TP1_ATR_MULTIPLIER = 1.5;
+
+/** Take Profit 2 multiplier × ATR */
+export const TP2_ATR_MULTIPLIER = 3.0;
 
 /** Minimum Risk/Reward ratio to accept a trade */
 export const MIN_RISK_REWARD = 2.0;

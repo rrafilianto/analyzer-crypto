@@ -132,6 +132,16 @@ export async function analyzeSymbol(symbol: string): Promise<MTFAnalysisResult> 
     }
   }
 
+  // Volume Confirmation: The entry timeframe (15m) MUST have a volume spike
+  if (shouldSignal && !fullAnalyses['15m'].indicators.volume.isConfirmed) {
+    shouldSignal = false;
+  }
+
+  // Market Regime Detection: Skip if both 4H (Macro) and 1H (Momentum) are Choppy/Ranging
+  if (shouldSignal && !fullAnalyses['4h'].indicators.regime.isTrending && !fullAnalyses['1h'].indicators.regime.isTrending) {
+    shouldSignal = false;
+  }
+
   return {
     symbol,
     timestamp: Date.now(),

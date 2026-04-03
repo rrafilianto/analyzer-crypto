@@ -44,14 +44,18 @@ function formatSignalMessage(signal: TradeSignal): string {
   // Format timeframe details
   const tfDetails = ANALYSIS_TIMEFRAMES.map((tf) => {
     const a = signal.timeframeDetails[tf];
-    const { ema, rsi } = a.indicators;
+    const { ema, rsi, volume, pattern, regime } = a.indicators;
     const dirEmoji = a.direction === 'LONG' ? '🟢' : a.direction === 'SHORT' ? '🔴' : '⚪';
-    return `  ${dirEmoji} ${TF_LABELS[tf]}: ${a.direction} | RSI: ${rsi.value}`;
+    const volEmoji = volume.isConfirmed ? '🔥' : '📉';
+    const patStr = pattern.detected ? ` | Pat: ${pattern.detected}` : '';
+    const regimeStr = regime.isTrending ? '📈 Trend' : '📉 Range';
+    return `  ${dirEmoji} ${TF_LABELS[tf]}: ${a.direction} | RSI: ${rsi.value} | ADX: ${regime.value} (${regimeStr}) | Vol: ${volEmoji}${patStr}`;
   }).join('\n');
 
   // Calculate percentages
   const slPercent = Math.abs(((signal.stopLoss - signal.entry) / signal.entry) * 100).toFixed(2);
-  const tpPercent = Math.abs(((signal.takeProfit - signal.entry) / signal.entry) * 100).toFixed(2);
+  const tp1Percent = Math.abs(((signal.takeProfit1 - signal.entry) / signal.entry) * 100).toFixed(2);
+  const tp2Percent = Math.abs(((signal.takeProfit2 - signal.entry) / signal.entry) * 100).toFixed(2);
 
   // Format price with appropriate decimals
   const formatPrice = (p: number) => {
@@ -75,9 +79,10 @@ function formatSignalMessage(signal: TradeSignal): string {
 ${tfDetails}
 
 💰 <b>Trade Setup:</b>
-  ├─ Entry: <code>${formatPrice(signal.entry)}</code>
+  ├─ Current Price: <code>${formatPrice(signal.entry)}</code>
   ├─ Stop Loss: <code>${formatPrice(signal.stopLoss)}</code> (-${slPercent}%)
-  ├─ Take Profit: <code>${formatPrice(signal.takeProfit)}</code> (+${tpPercent}%)
+  ├─ Take Profit 1: <code>${formatPrice(signal.takeProfit1)}</code> (+${tp1Percent}%)
+  ├─ Take Profit 2: <code>${formatPrice(signal.takeProfit2)}</code> (+${tp2Percent}%)
   └─ Risk/Reward: <b>1:${signal.riskRewardRatio.toFixed(1)}</b>
 
 🤖 <b>AI Researcher (Confidence: ${signal.aiResearch.confidence}/100):</b>

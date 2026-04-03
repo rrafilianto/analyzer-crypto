@@ -34,13 +34,32 @@ export interface RSIResult {
 export interface ATRResult {
   value: number;
   stopLoss: number;
-  takeProfit: number;
+  takeProfit1: number;
+  takeProfit2: number;
+}
+
+export interface VolumeResult {
+  sma: number;
+  current: number;
+  isConfirmed: boolean;
+}
+
+export interface PatternResult {
+  detected: string | null;
+}
+
+export interface RegimeResult {
+  value: number;
+  isTrending: boolean;
 }
 
 export interface IndicatorSnapshot {
   ema: EMAResult;
   rsi: RSIResult;
   atr: ATRResult;
+  volume: VolumeResult;
+  pattern: PatternResult;
+  regime: RegimeResult;
   direction: SignalDirection;
 }
 
@@ -89,7 +108,8 @@ export interface TradeSignal {
   direction: SignalDirection;
   entry: number;
   stopLoss: number;
-  takeProfit: number;
+  takeProfit1: number;
+  takeProfit2: number;
   riskRewardRatio: number;
   strength: string;
   timeframeDetails: Record<Timeframe, TimeframeAnalysis>;

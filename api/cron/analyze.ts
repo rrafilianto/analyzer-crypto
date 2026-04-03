@@ -77,9 +77,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         direction: analysis.agreement.direction,
         entry: currentPrice,
         stopLoss: atr.stopLoss,
-        takeProfit: atr.takeProfit,
+        takeProfit1: atr.takeProfit1,
+        takeProfit2: atr.takeProfit2,
         riskRewardRatio:
-          Math.abs(atr.takeProfit - currentPrice) /
+          Math.abs(atr.takeProfit2 - currentPrice) /
           Math.abs(currentPrice - atr.stopLoss),
         strength: analysis.agreement.strength,
         timeframeDetails: analysis.analyses,
