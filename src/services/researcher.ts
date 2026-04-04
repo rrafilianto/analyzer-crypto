@@ -1,6 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MTFAnalysisResult, ResearchResult } from '../types';
-import { GEMINI_MODEL, MIN_AI_CONFIDENCE, TF_LABELS } from '../config/constants';
+import {
+  GEMINI_MODEL,
+  MIN_AI_CONFIDENCE,
+  TF_LABELS,
+} from '../config/constants';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -49,12 +53,12 @@ ${tfSummaries}
  * Only called when technical indicators already align.
  */
 export async function researchSignal(
-  analysis: MTFAnalysisResult
+  analysis: MTFAnalysisResult,
 ): Promise<ResearchResult> {
   try {
     const model = genAI.getGenerativeModel({
       model: GEMINI_MODEL,
-      tools: [{ googleSearchRetrieval: {} } as any],
+      tools: [{ googleSearch: {} } as any],
     });
 
     const prompt = buildResearchPrompt(analysis);
@@ -76,7 +80,9 @@ export async function researchSignal(
       confidence: Math.min(100, Math.max(0, Number(parsed.confidence) || 0)),
       sentiment: parsed.sentiment || 'NEUTRAL',
       reasoning: parsed.reasoning || 'No reasoning provided.',
-      shouldProceed: parsed.confidence >= MIN_AI_CONFIDENCE && parsed.shouldProceed !== false,
+      shouldProceed:
+        parsed.confidence >= MIN_AI_CONFIDENCE &&
+        parsed.shouldProceed !== false,
     };
   } catch (error: any) {
     console.error(`AI Research error for ${analysis.symbol}:`, error.message);
