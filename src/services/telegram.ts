@@ -1,6 +1,6 @@
 import { TradeSignal, MTFAnalysisResult, CronResponse } from '../types';
 import { TF_LABELS, ANALYSIS_TIMEFRAMES } from '../config/constants';
-import { DBTrade } from './supabase';
+import { DBTrade, getTradeStats } from './supabase';
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
 
@@ -157,7 +157,7 @@ export async function sendRawMessage(text: string): Promise<void> {
  */
 export async function sendTrackerAlert(trade: DBTrade, newStatus: string) {
   const emoji = trade.direction === 'LONG' ? '🟢' : '🔴';
-  
+
   let header = '';
   let body = '';
 
@@ -176,5 +176,57 @@ export async function sendTrackerAlert(trade: DBTrade, newStatus: string) {
   }
 
   const message = `${header}\n\n${body}`;
+  await sendMessage(message, 'HTML');
+}
+
+/**
+ * Send PnL performance report.
+ */
+export async function sendPnlReport(): Promise<void> {
+  const stats = await getTradeStats();
+
+  if (!stats) {
+    await sendMessage('❌ Database not configured. Cannot generate PnL report.');
+    return;
+  }
+
+  if (stats.totalTrades === 0) {
+    await sendMessage(
+      `📊 <b>Trading Performance</b>\n\n` +
+      `No closed trades yet.\n` +
+      `Start trading to see performance metrics.`
+    );
+    return;
+  }
+
+  const pnlEmoji = stats.totalPnl >= 0 ? '🟢' : '🔴';
+  const pnlSign = stats.totalPnl >= 0 ? '+' : '';
+
+  // Recent trades list
+  const recentList = stats.recentTrades.slice(0, 5).map((t, i) => {
+    const dirEmoji = t.direction === 'LONG' ? '🟢' : '🔴';
+    const statusEmoji = t.status === 'CLOSED_WIN' ? '🎯' : t.status === 'CLOSED_LOSS' ? '❌' : '🤝';
+    const pnlStr = t.pnl_percent >= 0 ? `+${t.pnl_percent.toFixed(2)}%` : `${t.pnl_percent.toFixed(2)}%`;
+    const date = new Date(t.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' });
+    return `  ${i + 1}. ${dirEmoji} ${statusEmoji} ${t.symbol} ${t.direction} | ${pnlStr} | ${date}`;
+  }).join('\n');
+
+  const message =
+    `📊 <b>Trading Performance Report</b>\n\n` +
+    `${pnlEmoji} <b>Net PnL: ${pnlSign}${stats.totalPnl.toFixed(2)}%</b>\n\n` +
+    `<b>Statistics:</b>\n` +
+    `  ├─ Total Trades: ${stats.totalTrades}\n` +
+    `  ├─ Wins (TP2 Hit): ${stats.wins}\n` +
+    `  ├─ Losses (SL Hit): ${stats.losses}\n` +
+    `  ├─ Break-Evens: ${stats.breakEvens}\n` +
+    `  └─ Win Rate: <b>${stats.winRate}%</b>\n\n` +
+    `<b>Averages:</b>\n` +
+    `  ├─ Avg Win: +${stats.avgWin.toFixed(2)}%\n` +
+    `  ├─ Avg Loss: ${stats.avgLoss.toFixed(2)}%\n` +
+    `  ├─ Best Trade: +${stats.bestTrade.toFixed(2)}%\n` +
+    `  └─ Worst Trade: ${stats.worstTrade.toFixed(2)}%\n\n` +
+    `<b>Recent Trades (last ${stats.recentTrades.length > 5 ? 5 : stats.recentTrades.length}):</b>\n` +
+    `${recentList}`;
+
   await sendMessage(message, 'HTML');
 }

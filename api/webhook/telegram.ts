@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { analyzeSymbol } from '../../src/services/analyzer';
 import { researchSignal } from '../../src/services/researcher';
-import { sendSignal, sendStatus, sendRawMessage } from '../../src/services/telegram';
+import { sendSignal, sendStatus, sendRawMessage, sendPnlReport } from '../../src/services/telegram';
 import { getCurrentPrice } from '../../src/services/binance';
 import { WATCHLIST } from '../../src/config/watchlist';
 import { TradeSignal } from '../../src/types';
@@ -51,6 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           `  /analyze &lt;SYMBOL&gt; — Analyze a specific pair\n` +
           `  /watchlist — Show watchlist\n` +
           `  /price &lt;SYMBOL&gt; — Get current price\n` +
+          `  /pnl — View trading performance\n` +
           `  /help — Show this message`
         );
         break;
@@ -140,6 +141,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } catch (err: any) {
           await sendRawMessage(`❌ Error analyzing ${fullSymbol}: ${err.message}`);
         }
+        break;
+      }
+
+      case '/pnl': {
+        await sendPnlReport();
         break;
       }
 

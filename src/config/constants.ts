@@ -55,6 +55,26 @@ export const MIN_AI_CONFIDENCE = 60;
 /** Gemini model to use */
 export const GEMINI_MODEL = 'gemini-2.5-flash';
 
+/** Fallback strategy when AI is unavailable:
+ *  - 'strict': Skip the signal entirely (safest)
+ *  - 'moderate': Proceed with reduced confidence = 40 (default)
+ *  - 'lenient': Proceed with confidence = 50 (least restrictive)
+ */
+export const AI_FALLBACK_STRATEGY: 'strict' | 'moderate' | 'lenient' = 'moderate';
+
+/** Max retry attempts for Gemini API calls */
+export const AI_MAX_RETRIES = 3;
+
+/** Timeout per Gemini API call (milliseconds) */
+export const AI_TIMEOUT_MS = 30_000;
+
+// ========================
+// Signal Deduplication
+// ========================
+
+/** Cooldown window (minutes) before the same symbol+direction signal can be sent again */
+export const SIGNAL_COOLDOWN_MINUTES = 60;
+
 // ========================
 // Binance API
 // ========================

@@ -4,9 +4,9 @@ import { researchSignal } from '../../src/services/researcher';
 import { sendSignal, sendScanSummary } from '../../src/services/telegram';
 import { getCurrentPrice } from '../../src/services/binance';
 import { evaluateOpenTrades } from '../../src/services/tracker';
-import { insertNewTrade } from '../../src/services/supabase';
+import { insertNewTrade, checkRecentSignal } from '../../src/services/supabase';
 import { WATCHLIST } from '../../src/config/watchlist';
-import { MIN_AI_CONFIDENCE } from '../../src/config/constants';
+import { MIN_AI_CONFIDENCE, SIGNAL_COOLDOWN_MINUTES } from '../../src/config/constants';
 import { TradeSignal, CronResponse } from '../../src/types';
 
 /**
@@ -72,6 +72,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           reason: `AI rejected (confidence: ${research.confidence}/100): ${research.reasoning}`,
         });
         console.log(`[Cron] ${symbol}: SKIP — AI rejected (${research.confidence}/100)`);
+        continue;
+      }
+
+      // Step 2.5: Duplicate Signal Prevention — check cooldown
+      const signalDirection = analysis.agreement.direction;
+      if (signalDirection === 'NEUTRAL') {
+        result.skipped.push({ symbol, reason: 'Signal direction is NEUTRAL' });
+        continue;
+      }
+
+      const hasRecentSignal = await checkRecentSignal(
+        symbol,
+        signalDirection,
+        SIGNAL_COOLDOWN_MINUTES
+      );
+
+      if (hasRecentSignal) {
+        result.skipped.push({
+          symbol,
+          reason: `Duplicate prevention — ${signalDirection} signal sent within last ${SIGNAL_COOLDOWN_MINUTES}m`,
+        });
+        console.log(`[Cron] ${symbol}: SKIP — Duplicate signal (cooldown ${SIGNAL_COOLDOWN_MINUTES}m)`);
         continue;
       }
 
