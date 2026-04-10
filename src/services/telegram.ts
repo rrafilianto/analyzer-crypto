@@ -1,5 +1,5 @@
 import { TradeSignal, MTFAnalysisResult, CronResponse } from '../types';
-import { TF_LABELS, ANALYSIS_TIMEFRAMES } from '../config/constants';
+import { TF_LABELS, ANALYSIS_TIMEFRAMES, MIN_AI_CONFIDENCE } from '../config/constants';
 import { DBTrade, getTradeStats } from './supabase';
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
@@ -74,6 +74,16 @@ function formatSignalMessage(signal: TradeSignal): string {
     minute: '2-digit',
   });
 
+  const aiEmoji = signal.aiResearch.confidence >= MIN_AI_CONFIDENCE ? '🤖' : '⚠️';
+  const aiWarning = signal.aiResearch.confidence < MIN_AI_CONFIDENCE
+    ? `\n<i>⚠️ AI confidence rendah (${signal.aiResearch.confidence}/100) — harap ekstra hati-hati</i>`
+    : '';
+
+  // Format warnings section
+  const warningsSection = signal.warnings && signal.warnings.length > 0
+    ? `\n\n⚠️ <b>Perhatian:</b>\n${signal.warnings.map(w => `  • ${w}`).join('\n')}`
+    : '';
+
   return `${emoji} <b>${dirLabel} Signal — ${signal.symbol}</b>
 
 📊 <b>Timeframe Agreement: ${signal.strength}</b>
@@ -86,8 +96,8 @@ ${tfDetails}
   ├─ Take Profit 2: <code>${formatPrice(signal.takeProfit2)}</code> (+${tp2Percent}%)
   └─ Risk/Reward: <b>1:${signal.riskRewardRatio.toFixed(1)}</b>
 
-🤖 <b>AI Researcher (Confidence: ${signal.aiResearch.confidence}/100):</b>
-<i>"${signal.aiResearch.reasoning}"</i>
+${aiEmoji} <b>AI Researcher (Confidence: ${signal.aiResearch.confidence}/100):</b>
+<i>"${signal.aiResearch.reasoning}"</i>${aiWarning}${warningsSection}
 
 ⏱ ${timestamp} WIB`;
 }

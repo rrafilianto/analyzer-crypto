@@ -86,6 +86,7 @@ export interface MTFAnalysisResult {
     strength: string; // e.g. "3/3" or "2/3"
   };
   shouldSignal: boolean;
+  warnings: string[];
 }
 
 // ========================
@@ -114,6 +115,7 @@ export interface TradeSignal {
   strength: string;
   timeframeDetails: Record<Timeframe, TimeframeAnalysis>;
   aiResearch: ResearchResult;
+  warnings: string[];
   timestamp: number;
 }
 

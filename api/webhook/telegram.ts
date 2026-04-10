@@ -134,6 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             strength: analysis.agreement.strength,
             timeframeDetails: analysis.analyses,
             aiResearch: research,
+            warnings: analysis.warnings,
             timestamp: Date.now(),
           };
 

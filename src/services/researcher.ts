@@ -184,9 +184,8 @@ export async function researchSignal(
       confidence: Math.min(100, Math.max(0, Number(parsed.confidence) || 0)),
       sentiment: parsed.sentiment || 'NEUTRAL',
       reasoning: parsed.reasoning || 'No reasoning provided.',
-      shouldProceed:
-        parsed.confidence >= MIN_AI_CONFIDENCE &&
-        parsed.shouldProceed !== false,
+      // AI never blocks signals now — low confidence becomes a warning only
+      shouldProceed: true,
     };
   } catch (error: any) {
     console.error(`AI Research error for ${analysis.symbol}:`, error.message);

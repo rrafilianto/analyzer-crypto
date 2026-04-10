@@ -63,16 +63,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         continue;
       }
 
+      // Log any warnings from analysis
+      if (analysis.warnings.length > 0) {
+        console.log(`[Cron] ${symbol}: WARNINGS — ${analysis.warnings.join(' | ')}`);
+      }
+
       // Step 2: AI Research validation
       const research = await researchSignal(analysis);
 
+      // AI no longer blocks signals — low confidence is just a warning
       if (!research.shouldProceed) {
-        result.skipped.push({
-          symbol,
-          reason: `AI rejected (confidence: ${research.confidence}/100): ${research.reasoning}`,
-        });
-        console.log(`[Cron] ${symbol}: SKIP — AI rejected (${research.confidence}/100)`);
-        continue;
+        console.log(`[Cron] ${symbol}: AI warning (confidence: ${research.confidence}/100): ${research.reasoning}`);
       }
 
       // Step 2.5: Duplicate Signal Prevention — check cooldown
@@ -117,6 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         strength: analysis.agreement.strength,
         timeframeDetails: analysis.analyses,
         aiResearch: research,
+        warnings: analysis.warnings,
         timestamp: Date.now(),
       };
 

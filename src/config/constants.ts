@@ -50,7 +50,7 @@ export const ANALYSIS_TIMEFRAMES: Timeframe[] = ['4h', '1h', '15m'];
 // ========================
 
 /** Minimum AI confidence score (0-100) to proceed with signal */
-export const MIN_AI_CONFIDENCE = 60;
+export const MIN_AI_CONFIDENCE = 50;
 
 /** Gemini model to use */
 export const GEMINI_MODEL = 'gemini-2.5-flash';

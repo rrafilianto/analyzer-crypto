@@ -116,30 +116,36 @@ export async function analyzeSymbol(symbol: string): Promise<MTFAnalysisResult> 
   // Count agreement
   const agreement = countAgreement(fullAnalyses);
 
-  // BTC Trend Correlation: skip altcoin signals that conflict with BTC trend
+  // Collect warnings instead of blocking signals
+  const warnings: string[] = [];
+
   let shouldSignal = agreement.direction !== 'NEUTRAL';
 
+  // BTC Trend Correlation — warning only, don't block
   if (shouldSignal && symbol !== BTC_SYMBOL) {
     const btcTrend = await getBTCTrend();
 
-    // If BTC is bearish, skip LONG signals on altcoins
+    // If BTC is bearish, warn about LONG signals on altcoins
     if (btcTrend === 'SHORT' && agreement.direction === 'LONG') {
-      shouldSignal = false;
+      warnings.push(`BTC bearish (4H+1H) — signal LONG altcoin berlawanan tren`);
     }
-    // If BTC is bullish, skip SHORT signals on altcoins
+    // If BTC is bullish, warn about SHORT signals on altcoins
     if (btcTrend === 'LONG' && agreement.direction === 'SHORT') {
-      shouldSignal = false;
+      warnings.push(`BTC bullish (4H+1H) — signal SHORT altcoin berlawanan tren`);
     }
   }
 
-  // Volume Confirmation: The entry timeframe (15m) MUST have a volume spike
+  // Volume Confirmation — warning only, don't block
   if (shouldSignal && !fullAnalyses['15m'].indicators.volume.isConfirmed) {
-    shouldSignal = false;
+    const vol = fullAnalyses['15m'].indicators.volume;
+    warnings.push(`Volume lemah di 15M (${vol.current} vs SMA ${vol.sma}) — tidak ada spike`);
   }
 
-  // Market Regime Detection: Skip if both 4H (Macro) and 1H (Momentum) are Choppy/Ranging
+  // Market Regime Detection — warning only, don't block
   if (shouldSignal && !fullAnalyses['4h'].indicators.regime.isTrending && !fullAnalyses['1h'].indicators.regime.isTrending) {
-    shouldSignal = false;
+    const adx4h = fullAnalyses['4h'].indicators.regime.value;
+    const adx1h = fullAnalyses['1h'].indicators.regime.value;
+    warnings.push(`Market sedang ranging (ADX 4H: ${adx4h}, 1H: ${adx1h}) — sinyal kurang kuat`);
   }
 
   return {
@@ -148,5 +154,6 @@ export async function analyzeSymbol(symbol: string): Promise<MTFAnalysisResult> 
     analyses: fullAnalyses,
     agreement,
     shouldSignal,
+    warnings,
   };
 }
