@@ -34,8 +34,7 @@ export interface RSIResult {
 export interface ATRResult {
   value: number;
   stopLoss: number;
-  takeProfit1: number;
-  takeProfit2: number;
+  takeProfit: number;
 }
 
 export interface VolumeResult {
@@ -109,8 +108,7 @@ export interface TradeSignal {
   direction: SignalDirection;
   entry: number;
   stopLoss: number;
-  takeProfit1: number;
-  takeProfit2: number;
+  takeProfit: number;
   riskRewardRatio: number;
   strength: string;
   timeframeDetails: Record<Timeframe, TimeframeAnalysis>;

@@ -17,8 +17,7 @@ import {
   VOL_SMA_PERIOD,
   VOL_MULTIPLIER,
   SL_ATR_MULTIPLIER,
-  TP1_ATR_MULTIPLIER,
-  TP2_ATR_MULTIPLIER,
+  TP_ATR_MULTIPLIER,
 } from '../config/constants';
 
 /**
@@ -74,29 +73,24 @@ export function calculateATR(
   const value = atrValues[atrValues.length - 1];
 
   let stopLoss: number;
-  let takeProfit1: number;
-  let takeProfit2: number;
+  let takeProfit: number;
 
   if (direction === 'LONG') {
     stopLoss = currentPrice - value * SL_ATR_MULTIPLIER;
-    takeProfit1 = currentPrice + value * TP1_ATR_MULTIPLIER;
-    takeProfit2 = currentPrice + value * TP2_ATR_MULTIPLIER;
+    takeProfit = currentPrice + value * TP_ATR_MULTIPLIER;
   } else if (direction === 'SHORT') {
     stopLoss = currentPrice + value * SL_ATR_MULTIPLIER;
-    takeProfit1 = currentPrice - value * TP1_ATR_MULTIPLIER;
-    takeProfit2 = currentPrice - value * TP2_ATR_MULTIPLIER;
+    takeProfit = currentPrice - value * TP_ATR_MULTIPLIER;
   } else {
     // Neutral — calculate as if LONG for reference
     stopLoss = currentPrice - value * SL_ATR_MULTIPLIER;
-    takeProfit1 = currentPrice + value * TP1_ATR_MULTIPLIER;
-    takeProfit2 = currentPrice + value * TP2_ATR_MULTIPLIER;
+    takeProfit = currentPrice + value * TP_ATR_MULTIPLIER;
   }
 
   return {
     value: Math.round(value * 100) / 100,
     stopLoss: Math.round(stopLoss * 100) / 100,
-    takeProfit1: Math.round(takeProfit1 * 100) / 100,
-    takeProfit2: Math.round(takeProfit2 * 100) / 100,
+    takeProfit: Math.round(takeProfit * 100) / 100,
   };
 }
 

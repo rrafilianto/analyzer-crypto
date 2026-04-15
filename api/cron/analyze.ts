@@ -6,7 +6,11 @@ import { getCurrentPrice } from '../../src/services/binance';
 import { evaluateOpenTrades } from '../../src/services/tracker';
 import { insertNewTrade, checkRecentSignal } from '../../src/services/supabase';
 import { WATCHLIST } from '../../src/config/watchlist';
-import { MIN_AI_CONFIDENCE, SIGNAL_COOLDOWN_MINUTES } from '../../src/config/constants';
+import {
+  MIN_AI_CONFIDENCE,
+  MIN_RISK_REWARD,
+  SIGNAL_COOLDOWN_MINUTES,
+} from '../../src/config/constants';
 import { TradeSignal, CronResponse } from '../../src/types';
 
 /**
@@ -105,16 +109,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const entryTF = analysis.analyses['15m'];
       const atr = entryTF.indicators.atr;
 
+      const riskDist = Math.abs(currentPrice - atr.stopLoss);
+      const rewardDist = Math.abs(atr.takeProfit - currentPrice);
+      const riskRewardRatio = riskDist > 0 ? rewardDist / riskDist : 0;
+
+      if (riskRewardRatio < MIN_RISK_REWARD) {
+        result.skipped.push({
+          symbol,
+          reason: `Risk/reward ${riskRewardRatio.toFixed(2)} below minimum ${MIN_RISK_REWARD}`,
+        });
+        console.log(`[Cron] ${symbol}: SKIP — RR ${riskRewardRatio.toFixed(2)} < ${MIN_RISK_REWARD}`);
+        continue;
+      }
+
       const signal: TradeSignal = {
         symbol,
         direction: analysis.agreement.direction,
         entry: currentPrice,
         stopLoss: atr.stopLoss,
-        takeProfit1: atr.takeProfit1,
-        takeProfit2: atr.takeProfit2,
-        riskRewardRatio:
-          Math.abs(atr.takeProfit2 - currentPrice) /
-          Math.abs(currentPrice - atr.stopLoss),
+        takeProfit: atr.takeProfit,
+        riskRewardRatio,
         strength: analysis.agreement.strength,
         timeframeDetails: analysis.analyses,
         aiResearch: research,

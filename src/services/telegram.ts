@@ -55,8 +55,7 @@ function formatSignalMessage(signal: TradeSignal): string {
 
   // Calculate percentages
   const slPercent = Math.abs(((signal.stopLoss - signal.entry) / signal.entry) * 100).toFixed(2);
-  const tp1Percent = Math.abs(((signal.takeProfit1 - signal.entry) / signal.entry) * 100).toFixed(2);
-  const tp2Percent = Math.abs(((signal.takeProfit2 - signal.entry) / signal.entry) * 100).toFixed(2);
+  const tpPercent = Math.abs(((signal.takeProfit - signal.entry) / signal.entry) * 100).toFixed(2);
 
   // Format price with appropriate decimals
   const formatPrice = (p: number) => {
@@ -92,8 +91,7 @@ ${tfDetails}
 💰 <b>Trade Setup:</b>
   ├─ Current Price: <code>${formatPrice(signal.entry)}</code>
   ├─ Stop Loss: <code>${formatPrice(signal.stopLoss)}</code> (-${slPercent}%)
-  ├─ Take Profit 1: <code>${formatPrice(signal.takeProfit1)}</code> (+${tp1Percent}%)
-  ├─ Take Profit 2: <code>${formatPrice(signal.takeProfit2)}</code> (+${tp2Percent}%)
+  ├─ Take Profit: <code>${formatPrice(signal.takeProfit)}</code> (+${tpPercent}%)
   └─ Risk/Reward: <b>1:${signal.riskRewardRatio.toFixed(1)}</b>
 
 ${aiEmoji} <b>AI Researcher (Confidence: ${signal.aiResearch.confidence}/100):</b>
@@ -171,15 +169,12 @@ export async function sendTrackerAlert(trade: DBTrade, newStatus: string) {
   let header = '';
   let body = '';
 
-  if (newStatus === 'TP1_HIT') {
-    header = `🚀 <b>TP1 HIT [${trade.symbol}]</b>`;
-    body = `${emoji} ${trade.direction}\n✅ Secured 75% Profit.\n🛡️ Stop Loss moved to Entry (Break-Even) at ${trade.entry_price}`;
-  } else if (newStatus === 'CLOSED_WIN') {
-    header = `🎯 <b>JACKPOT TP2 HIT [${trade.symbol}]</b>`;
-    body = `${emoji} ${trade.direction}\n💰 Secured remaining 25% Profit!\n📈 Net PnL (After Fees): +${trade.pnl_percent.toFixed(2)}%`;
+  if (newStatus === 'CLOSED_WIN') {
+    header = `🎯 <b>TAKE PROFIT [${trade.symbol}]</b>`;
+    body = `${emoji} ${trade.direction}\n💰 Target tercapai.\n📈 Net PnL (After Fees): +${trade.pnl_percent.toFixed(2)}%`;
   } else if (newStatus === 'CLOSED_BE') {
     header = `🤝 <b>CLOSED AT BREAK-EVEN [${trade.symbol}]</b>`;
-    body = `${emoji} ${trade.direction}\n📉 Price reversed after TP1.\n🛡️ Closed remaining 25% safely at entry.\n📈 Net PnL (After Fees): +${trade.pnl_percent.toFixed(2)}%`;
+    body = `${emoji} ${trade.direction}\n📈 Net PnL (After Fees): +${trade.pnl_percent.toFixed(2)}%`;
   } else if (newStatus === 'CLOSED_LOSS') {
     header = `❌ <b>STOP LOSS HIT [${trade.symbol}]</b>`;
     body = `${emoji} ${trade.direction}\n📉 Trade closed at SL.\n📉 Net PnL (After Fees): ${trade.pnl_percent.toFixed(2)}%`;
@@ -226,7 +221,7 @@ export async function sendPnlReport(): Promise<void> {
     `${pnlEmoji} <b>Net PnL: ${pnlSign}${stats.totalPnl.toFixed(2)}%</b>\n\n` +
     `<b>Statistics:</b>\n` +
     `  ├─ Total Trades: ${stats.totalTrades}\n` +
-    `  ├─ Wins (TP2 Hit): ${stats.wins}\n` +
+    `  ├─ Wins (TP Hit): ${stats.wins}\n` +
     `  ├─ Losses (SL Hit): ${stats.losses}\n` +
     `  ├─ Break-Evens: ${stats.breakEvens}\n` +
     `  └─ Win Rate: <b>${stats.winRate}%</b>\n\n` +

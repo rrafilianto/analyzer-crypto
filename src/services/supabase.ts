@@ -11,11 +11,9 @@ export interface DBTrade {
   symbol: string;
   direction: 'LONG' | 'SHORT';
   entry_price: number;
-  tp1: number;
-  tp2: number;
+  take_profit: number;
   sl: number;
-  status: 'OPEN' | 'TP1_HIT' | 'CLOSED_WIN' | 'CLOSED_LOSS' | 'CLOSED_BE';
-  tp1_hit: boolean;
+  status: 'OPEN' | 'CLOSED_WIN' | 'CLOSED_LOSS' | 'CLOSED_BE' | 'TP1_HIT';
   pnl_percent: number;
   created_at: string;
   updated_at: string;
@@ -27,11 +25,9 @@ export async function insertNewTrade(signal: TradeSignal) {
     symbol: signal.symbol,
     direction: signal.direction,
     entry_price: signal.entry,
-    tp1: signal.takeProfit1,
-    tp2: signal.takeProfit2,
+    take_profit: signal.takeProfit,
     sl: signal.stopLoss,
     status: 'OPEN',
-    tp1_hit: false,
     pnl_percent: 0
   }]).select().single();
 
@@ -41,7 +37,7 @@ export async function insertNewTrade(signal: TradeSignal) {
 
 export async function getOpenTrades(symbol?: string): Promise<DBTrade[]> {
   if (!supabase) return [];
-  let query = supabase.from('trades').select('*').in('status', ['OPEN', 'TP1_HIT']);
+  let query = supabase.from('trades').select('*').eq('status', 'OPEN');
   if (symbol) query = query.eq('symbol', symbol);
 
   const { data, error } = await query;
@@ -54,7 +50,7 @@ export async function getOpenTrades(symbol?: string): Promise<DBTrade[]> {
 
 export async function updateTradeStatus(
   id: string,
-  updates: Partial<Pick<DBTrade, 'status' | 'tp1_hit' | 'pnl_percent' | 'sl'>>
+  updates: Partial<Pick<DBTrade, 'status' | 'pnl_percent' | 'sl'>>
 ) {
   if (!supabase) return;
   const { error } = await supabase

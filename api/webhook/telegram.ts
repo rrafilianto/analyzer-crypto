@@ -4,6 +4,7 @@ import { researchSignal } from '../../src/services/researcher';
 import { sendSignal, sendStatus, sendRawMessage, sendPnlReport } from '../../src/services/telegram';
 import { getCurrentPrice } from '../../src/services/binance';
 import { WATCHLIST } from '../../src/config/watchlist';
+import { MIN_RISK_REWARD } from '../../src/config/constants';
 import { TradeSignal } from '../../src/types';
 
 /**
@@ -121,16 +122,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const currentPrice = await getCurrentPrice(fullSymbol);
           const entryTF = analysis.analyses['15m'];
 
+          const atr = entryTF.indicators.atr;
+          const riskDist = Math.abs(currentPrice - atr.stopLoss);
+          const rewardDist = Math.abs(atr.takeProfit - currentPrice);
+          const riskRewardRatio = riskDist > 0 ? rewardDist / riskDist : 0;
+
+          if (riskRewardRatio < MIN_RISK_REWARD) {
+            await sendRawMessage(
+              `⚪ <b>${fullSymbol}</b> — RR terlalu rendah (${riskRewardRatio.toFixed(2)} &lt; ${MIN_RISK_REWARD}), sinyal tidak dikirim.`
+            );
+            break;
+          }
+
           const signal: TradeSignal = {
             symbol: fullSymbol,
             direction: analysis.agreement.direction,
             entry: currentPrice,
-            stopLoss: entryTF.indicators.atr.stopLoss,
-            takeProfit1: entryTF.indicators.atr.takeProfit1,
-            takeProfit2: entryTF.indicators.atr.takeProfit2,
-            riskRewardRatio:
-              Math.abs(entryTF.indicators.atr.takeProfit2 - currentPrice) /
-              Math.abs(currentPrice - entryTF.indicators.atr.stopLoss),
+            stopLoss: atr.stopLoss,
+            takeProfit: atr.takeProfit,
+            riskRewardRatio,
             strength: analysis.agreement.strength,
             timeframeDetails: analysis.analyses,
             aiResearch: research,

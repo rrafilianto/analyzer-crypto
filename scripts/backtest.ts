@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Candle, Timeframe } from '../src/types';
-import { ANALYSIS_TIMEFRAMES, MIN_TF_AGREEMENT } from '../src/config/constants';
+import { ANALYSIS_TIMEFRAMES, MIN_TF_AGREEMENT, MIN_RISK_REWARD } from '../src/config/constants';
 import { calculateIndicators } from '../src/services/indicators';
 
 // 1. Re-implement analyzeTimeframe
@@ -83,40 +83,22 @@ async function backtest() {
       let closed = false;
       let exitPrice = 0;
       let reason = '';
-      let part2Exit = 0;
-
-      if (trade.tp1Hit === undefined) trade.tp1Hit = false;
 
       const hitSL = isLong ? current15mCandle.low <= trade.stopLoss : current15mCandle.high >= trade.stopLoss;
-      const hitTP1 = isLong ? current15mCandle.high >= trade.takeProfit1 : current15mCandle.low <= trade.takeProfit1;
-      const hitTP2 = isLong ? current15mCandle.high >= trade.takeProfit2 : current15mCandle.low <= trade.takeProfit2;
+      const hitTP = isLong ? current15mCandle.high >= trade.takeProfit : current15mCandle.low <= trade.takeProfit;
 
-      if (!trade.tp1Hit) {
-        if (hitSL) {
-          closed = true; exitPrice = trade.stopLoss; reason = 'Full SL';
-          const gross = isLong ? (exitPrice - trade.entry)/trade.entry : (trade.entry - exitPrice)/trade.entry;
-          trade.pnlPercent = (gross - FEE_PERCENT) * 100;
-        } else if (hitTP1) {
-          trade.tp1Hit = true;
-          trade.stopLoss = trade.entry; // Move SL to Break-Even
-        }
-      }
-
-      if (trade.tp1Hit && !closed) {
-        const hitBESL = isLong ? current15mCandle.low <= trade.stopLoss : current15mCandle.high >= trade.stopLoss;
-        if (hitTP2) {
-          closed = true; part2Exit = trade.takeProfit2; reason = 'TP1+TP2';
-        } else if (hitBESL) {
-          closed = true; part2Exit = trade.entry; reason = 'TP1+BE';
-        }
-
-        if (closed) {
-          const gross1 = isLong ? (trade.takeProfit1 - trade.entry)/trade.entry : (trade.entry - trade.takeProfit1)/trade.entry;
-          const gross2 = isLong ? (part2Exit - trade.entry)/trade.entry : (trade.entry - part2Exit)/trade.entry;
-          const blendedGross = (gross1 * 0.75) + (gross2 * 0.25);
-          trade.pnlPercent = (blendedGross - FEE_PERCENT) * 100;
-          exitPrice = part2Exit;
-        }
+      if (hitSL) {
+        closed = true;
+        exitPrice = trade.stopLoss;
+        reason = 'Stop Loss';
+        const gross = isLong ? (exitPrice - trade.entry)/trade.entry : (trade.entry - exitPrice)/trade.entry;
+        trade.pnlPercent = (gross - FEE_PERCENT) * 100;
+      } else if (hitTP) {
+        closed = true;
+        exitPrice = trade.takeProfit;
+        reason = 'Take Profit';
+        const gross = isLong ? (exitPrice - trade.entry)/trade.entry : (trade.entry - exitPrice)/trade.entry;
+        trade.pnlPercent = (gross - FEE_PERCENT) * 100;
       }
 
       if (closed) {
@@ -154,34 +136,35 @@ async function backtest() {
     const agreement = countAgreement(analyses);
     let shouldSignal = agreement.direction !== 'NEUTRAL';
 
-    // Apply Pure Logic Filters
-    const btcTrend = analyses['4h'].direction; // Simplification
-    if(btcTrend === 'SHORT' && agreement.direction === 'LONG') shouldSignal = false;
-    if(btcTrend === 'LONG' && agreement.direction === 'SHORT') shouldSignal = false;
+    // Relaxed filters — warnings only, don't block signals
+    // (BTC trend, volume, ADX are now informational warnings in live bot)
 
-    if(shouldSignal && !analyses['15m'].indicators.volume.isConfirmed) shouldSignal = false;
-    if(shouldSignal && !analyses['4h'].indicators.regime.isTrending && !analyses['1h'].indicators.regime.isTrending) shouldSignal = false;
-    // MATIKAN Coba: if(shouldSignal && !analyses['15m'].indicators.regime.isTrending) shouldSignal = false;
-
-    if(shouldSignal) {
-      activeTrades.push({
-        direction: agreement.direction,
-        entry: currentPrice,
-        entryTime: currentTime,
-        stopLoss: analyses['15m'].indicators.atr.stopLoss,
-        takeProfit1: analyses['15m'].indicators.atr.takeProfit1,
-        takeProfit2: analyses['15m'].indicators.atr.takeProfit2,
-      });
+    if (shouldSignal) {
+      const atr = analyses['15m'].indicators.atr;
+      const riskDist = Math.abs(currentPrice - atr.stopLoss);
+      const rewardDist = Math.abs(atr.takeProfit - currentPrice);
+      const rr = riskDist > 0 ? rewardDist / riskDist : 0;
+      if (rr >= MIN_RISK_REWARD) {
+        activeTrades.push({
+          direction: agreement.direction,
+          entry: currentPrice,
+          entryTime: currentTime,
+          stopLoss: atr.stopLoss,
+          takeProfit: atr.takeProfit,
+        });
+      }
     }
   }
 
   // Generate Report
-  const tp1Be = closedTrades.filter(t => t.reason === 'TP1+BE');
-  const tp2 = closedTrades.filter(t => t.reason === 'TP1+TP2');
-  const winTrades = tp1Be.length + tp2.length;
-  const lossTrades = closedTrades.filter(t => t.reason === 'Full SL');
+  const tpHits = closedTrades.filter(t => t.reason === 'Take Profit');
+  const winTrades = tpHits.length;
+  const lossTrades = closedTrades.filter(t => t.reason === 'Stop Loss');
   const winRate = closedTrades.length > 0 ? ((winTrades / closedTrades.length) * 100).toFixed(2) : '0.00';
-  
+
+  // Count warnings that would have been triggered
+  let warningCounts = { btcConflict: 0, lowVolume: 0, ranging: 0 };
+
   let maxDrawdown = 0;
   let peak = 0;
   let runningPnl = 0;
@@ -194,10 +177,10 @@ async function backtest() {
 
   console.log(`\n============== BACKTEST REPORT ==============`);
   console.log(`Asset: ${symbol}`);
+  console.log(`Strategy: Relaxed filters (warnings only)`);
   console.log(`Total Trades Taken: ${closedTrades.length}`);
-  console.log(`- Hit TP1 + TP2: ${tp2.length} trades`);
-  console.log(`- Hit TP1 + BE (Bonus): ${tp1Be.length} trades`);
-  console.log(`- Full Stop Loss: ${lossTrades.length} trades`);
+  console.log(`- Take Profit: ${tpHits.length} trades`);
+  console.log(`- Stop Loss: ${lossTrades.length} trades`);
   console.log(`Win Rate (TP Hit): ${winRate}%`);
   console.log(`Max Drawdown: -${maxDrawdown.toFixed(2)}%`);
   console.log(`Net Compounded PnL AFTER FEES (1x Lev): ${currentPnl > 0 ? '+' : ''}${currentPnl.toFixed(2)}%`);

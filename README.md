@@ -102,16 +102,14 @@ Cron Trigger (every 15m)
 | Level | Formula |
 |-------|---------|
 | Stop Loss | Entry ± (1.5 × ATR) |
-| Take Profit 1 | Entry ± (1.5 × ATR) |
-| Take Profit 2 | Entry ± (3.0 × ATR) |
-| Min Risk/Reward | 2.0 |
+| Take Profit | Entry ± (3.0 × ATR) |
+| Risk/Reward (to TP vs SL) | (3.0 / 1.5) = **2.0** |
+| Min Risk/Reward (enforced) | `MIN_RISK_REWARD` (default 2.0) — sinyal di-skip jika di bawah ini |
 
 ### Trade Management
 
-- **TP1 Hit** → 75% profit secured, SL moved to Break-Even
-- **TP2 Hit** → Remaining 25% closed at target
-- **Break-Even** → Price reverses after TP1, closes at entry
-- **Stop Loss** → Full position closed
+- **Take Profit** → Posisi ditutup penuh di target
+- **Stop Loss** → Posisi ditutup penuh di SL
 - **Round-trip fee**: 0.2% factored into PnL
 
 ---
@@ -159,15 +157,24 @@ create table trades (
   symbol text not null,
   direction text not null check (direction in ('LONG', 'SHORT')),
   entry_price numeric not null,
-  tp1 numeric not null,
-  tp2 numeric not null,
+  take_profit numeric not null,
   sl numeric not null,
-  status text not null default 'OPEN' check (status in ('OPEN', 'TP1_HIT', 'CLOSED_WIN', 'CLOSED_LOSS', 'CLOSED_BE')),
-  tp1_hit boolean not null default false,
+  status text not null default 'OPEN' check (status in ('OPEN', 'CLOSED_WIN', 'CLOSED_LOSS')),
   pnl_percent numeric not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+```
+
+Migrasi dari skema lama (`tp1` / `tp2` / `tp1_hit`): sesuaikan kolom lalu tutup trade yang masih `TP1_HIT` di Supabase, atau jalankan migrasi contoh:
+
+```sql
+alter table trades add column if not exists take_profit numeric;
+update trades set take_profit = coalesce(tp2, tp1) where take_profit is null;
+-- Setelah backfill, hapus kolom lama jika tidak dipakai lagi:
+-- alter table trades drop column if exists tp1;
+-- alter table trades drop column if exists tp2;
+-- alter table trades drop column if exists tp1_hit;
 ```
 
 ### 4. Deploy to Vercel
@@ -224,8 +231,7 @@ VOL_MULTIPLIER = 1.5
 
 // Risk
 SL_ATR_MULTIPLIER = 1.5
-TP1_ATR_MULTIPLIER = 1.5
-TP2_ATR_MULTIPLIER = 3.0
+TP_ATR_MULTIPLIER = 3.0
 MIN_RISK_REWARD = 2.0
 
 // MTF Agreement
@@ -301,7 +307,7 @@ Downloads 90 days of 15m/1h/4h candles to `.data/` for backtesting.
 npx tsx scripts/backtest.ts BTCUSDT
 ```
 
-Runs backtest using downloaded data with full trade logic (TP1→BE, TP2, SL, fees).
+Runs backtest using downloaded data with full trade logic (single TP, SL, fees).
 
 ### Type Check
 

@@ -26,13 +26,10 @@ export const VOL_MULTIPLIER = 1.5;
 /** Stop Loss multiplier × ATR */
 export const SL_ATR_MULTIPLIER = 1.5;
 
-/** Take Profit 1 multiplier × ATR */
-export const TP1_ATR_MULTIPLIER = 1.5;
+/** Take Profit multiplier × ATR (with SL 1.5× ATR → RR to TP = TP_MULT / SL_MULT = 2:1) */
+export const TP_ATR_MULTIPLIER = 3.0;
 
-/** Take Profit 2 multiplier × ATR */
-export const TP2_ATR_MULTIPLIER = 3.0;
-
-/** Minimum Risk/Reward ratio to accept a trade */
+/** Minimum Risk/Reward ratio to accept a trade (reward distance / risk distance to SL) */
 export const MIN_RISK_REWARD = 2.0;
 
 // ========================
